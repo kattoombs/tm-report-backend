@@ -166,15 +166,19 @@ async function generateTMReportPDF(data) {
 
         doc.fillColor('#000000').font('Helvetica').fontSize(8);
 
-        // First row: Work description
-        doc.rect(descX, y, descWidth, 18).stroke();
-        doc.text(data.workDescription || '', descX + 3, y + 4, { width: descWidth - 6 });
-        doc.rect(dateX, y, dateWidth, 18).stroke();
-        doc.rect(hoursX, y, hoursWidth, 18).stroke();
-        doc.rect(laborX, y, laborWidth, 18).stroke();
-        doc.rect(materialX, y, materialWidth, 18).stroke();
-        doc.rect(totalX, y, totalWidth, 18).stroke();
-        y += 18;
+        // First row: Work description (with dynamic height)
+        const descStartY = y;
+        const descText = data.workDescription || '';
+        const descHeight = Math.max(18, Math.ceil(doc.heightOfString(descText, { width: descWidth - 6 }) + 8));
+        
+        doc.rect(descX, y, descWidth, descHeight).stroke();
+        doc.text(descText, descX + 3, y + 4, { width: descWidth - 6 });
+        doc.rect(dateX, y, dateWidth, descHeight).stroke();
+        doc.rect(hoursX, y, hoursWidth, descHeight).stroke();
+        doc.rect(laborX, y, laborWidth, descHeight).stroke();
+        doc.rect(materialX, y, materialWidth, descHeight).stroke();
+        doc.rect(totalX, y, totalWidth, descHeight).stroke();
+        y += descHeight;
 
         // Second row: Crew info (e.g., "2 men")
         doc.rect(descX, y, descWidth, 18).stroke();
@@ -187,17 +191,21 @@ async function generateTMReportPDF(data) {
         doc.rect(totalX, y, totalWidth, 18).stroke();
         y += 18;
 
-        // Materials rows
+        // Materials rows (with dynamic height)
         if (data.materials && data.materials.length > 0) {
             data.materials.forEach(material => {
-                doc.rect(descX, y, descWidth, 18).stroke();
-                doc.text(`${material.desc}${material.supplier ? ` (${material.supplier})` : ''}`, descX + 3, y + 4, { width: descWidth - 6 });
-                doc.rect(dateX, y, dateWidth, 18).stroke();
-                doc.rect(hoursX, y, hoursWidth, 18).stroke();
-                doc.rect(laborX, y, laborWidth, 18).stroke();
-                doc.rect(materialX, y, materialWidth, 18).stroke();
-                doc.rect(totalX, y, totalWidth, 18).stroke();
-                y += 18;
+                const matDesc = material.qty ? `${material.qty} ${material.desc}` : material.desc;
+                const fullText = `${matDesc}${material.supplier ? ` (${material.supplier})` : ''}`;
+                const matHeight = Math.max(18, Math.ceil(doc.heightOfString(fullText, { width: descWidth - 6 }) + 8));
+                
+                doc.rect(descX, y, descWidth, matHeight).stroke();
+                doc.text(fullText, descX + 3, y + 4, { width: descWidth - 6 });
+                doc.rect(dateX, y, dateWidth, matHeight).stroke();
+                doc.rect(hoursX, y, hoursWidth, matHeight).stroke();
+                doc.rect(laborX, y, laborWidth, matHeight).stroke();
+                doc.rect(materialX, y, materialWidth, matHeight).stroke();
+                doc.rect(totalX, y, totalWidth, matHeight).stroke();
+                y += matHeight;
             });
         }
 
