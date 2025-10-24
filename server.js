@@ -26,7 +26,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // Gold/brown color from template
 const GOLD_COLOR = '#A27339';
 
-// Generate T&M Report PDF matching the template exactly
+// Generate T&M Report PDF matching the example exactly
 async function generateTMReportPDF(data) {
     return new Promise((resolve, reject) => {
         const doc = new PDFDocument({ 
@@ -82,7 +82,7 @@ async function generateTMReportPDF(data) {
         doc.moveTo(leftMargin, y).lineTo(leftMargin + pageWidth, y).stroke();
         y += 20;
 
-        // Project Info Section - Two columns
+        // Project Info Section - SIMPLIFIED (no crew/hours/foreman)
         const col1 = leftMargin;
         const col2 = leftMargin + 250;
 
@@ -125,75 +125,65 @@ async function generateTMReportPDF(data) {
         doc.text('ADDRESS', col1, y);
         doc.fillColor('#000000').font('Helvetica');
         doc.text(data.gcAddress || '', col1 + 100, y, { width: 380 });
-        y += 25;
-
-        // FOREMAN
-        doc.fillColor(GOLD_COLOR).font('Helvetica-Bold');
-        doc.text('FOREMAN', col1, y);
-        doc.fillColor('#000000').font('Helvetica');
-        doc.text(data.foremanName, col1 + 100, y);
-        y += 25;
-
-        // CREW SIZE and TOTAL HOURS
-        doc.fillColor(GOLD_COLOR).font('Helvetica-Bold');
-        doc.text('CREW SIZE', col1, y);
-        doc.fillColor('#000000').font('Helvetica');
-        doc.text(`${data.numMen} men`, col1 + 100, y);
-        
-        doc.fillColor(GOLD_COLOR).font('Helvetica-Bold');
-        doc.text('TOTAL HOURS', col2, y);
-        doc.fillColor('#000000').font('Helvetica');
-        doc.text(`${data.totalHours} hrs`, col2 + 90, y);
         y += 35;
 
-        // WORK DESCRIPTION (added before table)
-        doc.fillColor(GOLD_COLOR).font('Helvetica-Bold').fontSize(10);
-        doc.text('WORK DESCRIPTION:', col1, y);
-        y += 15;
-        doc.fillColor('#000000').font('Helvetica').fontSize(9);
-        doc.text(data.workDescription || '', col1, y, { width: pageWidth });
-        y = doc.y + 20;
-
-        // Table - matching template columns
+        // Table - NEW LAYOUT with LABOR COST column
         const tableTop = y;
-        const descWidth = 210; // Wide description column
-        const dateWidth = 70;
-        const hoursWidth = 60;
-        const costWidth = 90;
-        const totalWidth = 62;
+        const descWidth = 170;    // Description column
+        const dateWidth = 55;     // Date column
+        const hoursWidth = 45;    // Hours column
+        const laborWidth = 70;    // Labor cost column (NEW!)
+        const materialWidth = 70; // Material cost column  
+        const totalWidth = 82;    // Total column
 
         const descX = leftMargin;
         const dateX = descX + descWidth;
         const hoursX = dateX + dateWidth;
-        const costX = hoursX + hoursWidth;
-        const totalX = costX + costWidth;
+        const laborX = hoursX + hoursWidth;
+        const materialX = laborX + laborWidth;
+        const totalX = materialX + materialWidth;
 
         // Table header
-        doc.fillColor(GOLD_COLOR).font('Helvetica-Bold').fontSize(9);
+        doc.fillColor(GOLD_COLOR).font('Helvetica-Bold').fontSize(8);
         doc.text('DESCRIPTION', descX + 3, tableTop + 5);
         doc.text('DATE', dateX + 3, tableTop + 5);
         doc.text('HOURS', hoursX + 3, tableTop + 5);
-        doc.text('MATERIAL COST', costX + 3, tableTop + 5);
+        doc.text('LABOR', laborX + 3, tableTop + 5);
+        doc.text('COST', laborX + 3, tableTop + 12);
+        doc.text('MATERIAL', materialX + 3, tableTop + 5);
+        doc.text('COST', materialX + 3, tableTop + 12);
         doc.text('TOTAL', totalX + 3, tableTop + 5);
 
         // Draw header border
         doc.rect(descX, tableTop, descWidth, 20).stroke();
         doc.rect(dateX, tableTop, dateWidth, 20).stroke();
         doc.rect(hoursX, tableTop, hoursWidth, 20).stroke();
-        doc.rect(costX, tableTop, costWidth, 20).stroke();
+        doc.rect(laborX, tableTop, laborWidth, 20).stroke();
+        doc.rect(materialX, tableTop, materialWidth, 20).stroke();
         doc.rect(totalX, tableTop, totalWidth, 20).stroke();
 
         y = tableTop + 20;
 
-        // Add data rows
-        doc.fillColor('#000000').font('Helvetica').fontSize(9);
-        
-        // First row with date
+        doc.fillColor('#000000').font('Helvetica').fontSize(8);
+
+        // First row: Work description
         doc.rect(descX, y, descWidth, 18).stroke();
+        doc.text(data.workDescription || '', descX + 3, y + 4, { width: descWidth - 6 });
         doc.rect(dateX, y, dateWidth, 18).stroke();
-        doc.text(data.date, dateX + 3, y + 4);
         doc.rect(hoursX, y, hoursWidth, 18).stroke();
-        doc.rect(costX, y, costWidth, 18).stroke();
+        doc.rect(laborX, y, laborWidth, 18).stroke();
+        doc.rect(materialX, y, materialWidth, 18).stroke();
+        doc.rect(totalX, y, totalWidth, 18).stroke();
+        y += 18;
+
+        // Second row: Crew info (e.g., "2 men")
+        doc.rect(descX, y, descWidth, 18).stroke();
+        doc.text(`${data.numMen} men`, descX + 3, y + 4);
+        doc.rect(dateX, y, dateWidth, 18).stroke();
+        doc.rect(hoursX, y, hoursWidth, 18).stroke();
+        doc.text(data.totalHours || '', hoursX + 3, y + 4);
+        doc.rect(laborX, y, laborWidth, 18).stroke();
+        doc.rect(materialX, y, materialWidth, 18).stroke();
         doc.rect(totalX, y, totalWidth, 18).stroke();
         y += 18;
 
@@ -204,18 +194,20 @@ async function generateTMReportPDF(data) {
                 doc.text(`${material.desc}${material.supplier ? ` (${material.supplier})` : ''}`, descX + 3, y + 4, { width: descWidth - 6 });
                 doc.rect(dateX, y, dateWidth, 18).stroke();
                 doc.rect(hoursX, y, hoursWidth, 18).stroke();
-                doc.rect(costX, y, costWidth, 18).stroke();
+                doc.rect(laborX, y, laborWidth, 18).stroke();
+                doc.rect(materialX, y, materialWidth, 18).stroke();
                 doc.rect(totalX, y, totalWidth, 18).stroke();
                 y += 18;
             });
         }
 
-        // Empty rows (7 total to fill page nicely)
-        for (let i = 0; i < 7; i++) {
+        // Empty rows (5 to fill page)
+        for (let i = 0; i < 5; i++) {
             doc.rect(descX, y, descWidth, 18).stroke();
             doc.rect(dateX, y, dateWidth, 18).stroke();
             doc.rect(hoursX, y, hoursWidth, 18).stroke();
-            doc.rect(costX, y, costWidth, 18).stroke();
+            doc.rect(laborX, y, laborWidth, 18).stroke();
+            doc.rect(materialX, y, materialWidth, 18).stroke();
             doc.rect(totalX, y, totalWidth, 18).stroke();
             y += 18;
         }
@@ -226,7 +218,8 @@ async function generateTMReportPDF(data) {
         doc.text('Equipment', descX + 3, y + 4);
         doc.rect(dateX, y, dateWidth, 18).stroke();
         doc.rect(hoursX, y, hoursWidth, 18).stroke();
-        doc.rect(costX, y, costWidth, 18).stroke();
+        doc.rect(laborX, y, laborWidth, 18).stroke();
+        doc.rect(materialX, y, materialWidth, 18).stroke();
         doc.rect(totalX, y, totalWidth, 18).stroke();
         y += 18;
 
@@ -239,7 +232,8 @@ async function generateTMReportPDF(data) {
                 doc.rect(dateX, y, dateWidth, 18).stroke();
                 doc.rect(hoursX, y, hoursWidth, 18).stroke();
                 doc.text(`${equip.hours}`, hoursX + 3, y + 4);
-                doc.rect(costX, y, costWidth, 18).stroke();
+                doc.rect(laborX, y, laborWidth, 18).stroke();
+                doc.rect(materialX, y, materialWidth, 18).stroke();
                 doc.rect(totalX, y, totalWidth, 18).stroke();
                 y += 18;
             });
@@ -253,7 +247,8 @@ async function generateTMReportPDF(data) {
         doc.text('SUBTOTAL', descX + 3, y + 4);
         doc.rect(dateX, y, dateWidth, 18).stroke();
         doc.rect(hoursX, y, hoursWidth, 18).stroke();
-        doc.rect(costX, y, costWidth, 18).stroke();
+        doc.rect(laborX, y, laborWidth, 18).stroke();
+        doc.rect(materialX, y, materialWidth, 18).stroke();
         doc.rect(totalX, y, totalWidth, 18).stroke();
         y += 18;
 
@@ -262,7 +257,8 @@ async function generateTMReportPDF(data) {
         doc.text('Profit and Overhead 15%', descX + 3, y + 4);
         doc.rect(dateX, y, dateWidth, 18).stroke();
         doc.rect(hoursX, y, hoursWidth, 18).stroke();
-        doc.rect(costX, y, costWidth, 18).stroke();
+        doc.rect(laborX, y, laborWidth, 18).stroke();
+        doc.rect(materialX, y, materialWidth, 18).stroke();
         doc.rect(totalX, y, totalWidth, 18).stroke();
         y += 18;
 
@@ -271,7 +267,8 @@ async function generateTMReportPDF(data) {
         doc.text('TOTAL', descX + 3, y + 4);
         doc.rect(dateX, y, dateWidth, 18).stroke();
         doc.rect(hoursX, y, hoursWidth, 18).stroke();
-        doc.rect(costX, y, costWidth, 18).stroke();
+        doc.rect(laborX, y, laborWidth, 18).stroke();
+        doc.rect(materialX, y, materialWidth, 18).stroke();
         doc.rect(totalX, y, totalWidth, 18).stroke();
 
         doc.end();
