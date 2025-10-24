@@ -273,14 +273,6 @@ async function generateTMReportPDF(data) {
         doc.rect(hoursX, y, hoursWidth, 18).stroke();
         doc.rect(costX, y, costWidth, 18).stroke();
         doc.rect(totalX, y, totalWidth, 18).stroke();
-        y += 30;
-
-        // Approval section
-        doc.fillColor('#000000').font('Helvetica').fontSize(9);
-        doc.text('APPROVED BY: _______________________________________________', leftMargin, y);
-        doc.text('DATE: _______________', leftMargin + 380, y);
-        y += 20;
-        doc.font('Helvetica-Oblique').text('Superintendent', leftMargin, y, { align: 'center' });
 
         doc.end();
     });
