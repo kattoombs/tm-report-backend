@@ -26,13 +26,9 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Email configuration (you'll set these as environment variables)
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER, // jordan.calbuilders@gmail.com
-        pass: process.env.EMAIL_PASSWORD // App-specific password
-    }
-});
+// Resend email configuration
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Generate T&M Report Word Document
 async function generateTMReport(data) {
@@ -374,8 +370,14 @@ app.post('/api/submit-tm-report', async (req, res) => {
             });
         }
         
-        // Send email
-        await transporter.sendMail(mailOptions);
+   // Send email via Resend
+await resend.emails.send({
+    from: 'T&M Reports <onboarding@resend.dev>',
+    to: [process.env.EMAIL_TO_KATHIE, process.env.EMAIL_TO_JORDAN],
+    subject: mailOptions.subject,
+    html: mailOptions.html,
+    attachments: mailOptions.attachments
+});
         
         console.log('T&M report emailed successfully');
         res.json({ success: true, message: 'T&M report submitted successfully' });
