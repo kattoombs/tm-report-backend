@@ -1,8 +1,7 @@
 const express = require('express');
 const multer = require('multer');
-const nodemailer = require('nodemailer');
 const cors = require('cors');
-const { Document, Packer, Paragraph, TextRun, Table, TableCell, TableRow, WidthType, AlignmentType, BorderStyle, ImageRun } = require('docx');
+const { Document, Packer, Paragraph, TextRun, Table, TableCell, TableRow, WidthType, AlignmentType, ImageRun } = require('docx');
 const fs = require('fs');
 const path = require('path');
 
@@ -25,14 +24,13 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Email configuration (you'll set these as environment variables)
 // Resend email configuration
 const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Generate T&M Report Word Document
 async function generateTMReport(data) {
-    // Read logo image (should be in same directory as server.js when deployed)
+    // Read logo image
     let logoImage = null;
     try {
         logoImage = fs.readFileSync(path.join(__dirname, 'CBlogo_transparent_backgrd_1000x1000px.png'));
@@ -42,9 +40,18 @@ async function generateTMReport(data) {
     
     const doc = new Document({
         sections: [{
-            properties: {},
+            properties: {
+                page: {
+                    margin: {
+                        top: 720,
+                        right: 720,
+                        bottom: 720,
+                        left: 720
+                    }
+                }
+            },
             children: [
-                // Logo (if available)
+                // Logo
                 ...(logoImage ? [
                     new Paragraph({
                         alignment: AlignmentType.CENTER,
@@ -124,50 +131,148 @@ async function generateTMReport(data) {
                 new Paragraph({ text: "" }),
                 new Paragraph({ text: "" }),
                 
-                // Project Info Table
+                // Project Info Table - Fixed widths
                 new Table({
                     width: { size: 100, type: WidthType.PERCENTAGE },
                     rows: [
                         new TableRow({
                             children: [
-                                new TableCell({ children: [new Paragraph({ text: "PROJECT NAME", bold: true })] }),
-                                new TableCell({ children: [new Paragraph({ text: data.jobNumber.split(' - ')[1] || '' })] }),
-                                new TableCell({ children: [new Paragraph({ text: "PROJECT #", bold: true })] }),
-                                new TableCell({ children: [new Paragraph({ text: data.jobNumber.split(' - ')[0] || '' })] })
-                            ]
-                        }),
-                        new TableRow({
-                            children: [
-                                new TableCell({ children: [new Paragraph({ text: "DATE", bold: true })] }),
-                                new TableCell({ children: [new Paragraph({ text: data.date })] }),
-                                new TableCell({ children: [new Paragraph({ text: "" })] }),
-                                new TableCell({ children: [new Paragraph({ text: "" })] })
-                            ]
-                        }),
-                        new TableRow({
-                            children: [
-                                new TableCell({ children: [new Paragraph({ text: "LOCATION", bold: true })] }),
                                 new TableCell({ 
-                                    columnSpan: 3,
-                                    children: [new Paragraph({ text: data.projectAddress })] 
+                                    width: { size: 2500, type: WidthType.DXA },
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "PROJECT NAME", bold: true, size: 20 })]
+                                    })] 
+                                }),
+                                new TableCell({ 
+                                    width: { size: 2500, type: WidthType.DXA },
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: data.jobNumber.split(' - ')[1] || '', size: 20 })]
+                                    })] 
+                                }),
+                                new TableCell({ 
+                                    width: { size: 2000, type: WidthType.DXA },
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "PROJECT #", bold: true, size: 20 })]
+                                    })] 
+                                }),
+                                new TableCell({ 
+                                    width: { size: 1500, type: WidthType.DXA },
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: data.jobNumber.split(' - ')[0] || '', size: 20 })]
+                                    })] 
                                 })
                             ]
                         }),
                         new TableRow({
                             children: [
-                                new TableCell({ children: [new Paragraph({ text: "GEN. CONTRACTOR / OWNER", bold: true })] }),
                                 new TableCell({ 
+                                    width: { size: 1500, type: WidthType.DXA },
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "DATE", bold: true, size: 20 })]
+                                    })] 
+                                }),
+                                new TableCell({ 
+                                    width: { size: 7000, type: WidthType.DXA },
                                     columnSpan: 3,
-                                    children: [new Paragraph({ text: data.generalContractor })] 
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: data.date, size: 20 })]
+                                    })] 
                                 })
                             ]
                         }),
                         new TableRow({
                             children: [
-                                new TableCell({ children: [new Paragraph({ text: "ADDRESS", bold: true })] }),
                                 new TableCell({ 
+                                    width: { size: 2000, type: WidthType.DXA },
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "LOCATION", bold: true, size: 20 })]
+                                    })] 
+                                }),
+                                new TableCell({ 
+                                    width: { size: 6500, type: WidthType.DXA },
                                     columnSpan: 3,
-                                    children: [new Paragraph({ text: data.gcAddress || '' })] 
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: data.projectAddress, size: 20 })]
+                                    })] 
+                                })
+                            ]
+                        }),
+                        new TableRow({
+                            children: [
+                                new TableCell({ 
+                                    width: { size: 2000, type: WidthType.DXA },
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "GEN. CONTRACTOR", bold: true, size: 20 })]
+                                    })] 
+                                }),
+                                new TableCell({ 
+                                    width: { size: 6500, type: WidthType.DXA },
+                                    columnSpan: 3,
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: data.generalContractor, size: 20 })]
+                                    })] 
+                                })
+                            ]
+                        }),
+                        new TableRow({
+                            children: [
+                                new TableCell({ 
+                                    width: { size: 2000, type: WidthType.DXA },
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "GC ADDRESS", bold: true, size: 20 })]
+                                    })] 
+                                }),
+                                new TableCell({ 
+                                    width: { size: 6500, type: WidthType.DXA },
+                                    columnSpan: 3,
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: data.gcAddress || '', size: 20 })]
+                                    })] 
+                                })
+                            ]
+                        }),
+                        new TableRow({
+                            children: [
+                                new TableCell({ 
+                                    width: { size: 1500, type: WidthType.DXA },
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "CREW SIZE", bold: true, size: 20 })]
+                                    })] 
+                                }),
+                                new TableCell({ 
+                                    width: { size: 1500, type: WidthType.DXA },
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: `${data.numMen} men`, size: 20 })]
+                                    })] 
+                                }),
+                                new TableCell({ 
+                                    width: { size: 2000, type: WidthType.DXA },
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "TOTAL HOURS", bold: true, size: 20 })]
+                                    })] 
+                                }),
+                                new TableCell({ 
+                                    width: { size: 1500, type: WidthType.DXA },
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: `${data.totalHours} hrs`, size: 20 })]
+                                    })] 
+                                })
+                            ]
+                        }),
+                        new TableRow({
+                            children: [
+                                new TableCell({ 
+                                    width: { size: 1500, type: WidthType.DXA },
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "FOREMAN", bold: true, size: 20 })]
+                                    })] 
+                                }),
+                                new TableCell({ 
+                                    width: { size: 7000, type: WidthType.DXA },
+                                    columnSpan: 3,
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: data.foremanName, size: 20 })]
+                                    })] 
                                 })
                             ]
                         })
@@ -175,8 +280,15 @@ async function generateTMReport(data) {
                 }),
                 
                 new Paragraph({ text: "" }),
+                new Paragraph({ 
+                    children: [new TextRun({ text: "WORK DESCRIPTION", bold: true, size: 24 })]
+                }),
+                new Paragraph({ 
+                    children: [new TextRun({ text: data.workDescription || '', size: 20 })]
+                }),
+                new Paragraph({ text: "" }),
                 
-                // Work Details Table
+                // Labor/Materials/Equipment Table - 60% Description, 10% each for other columns
                 new Table({
                     width: { size: 100, type: WidthType.PERCENTAGE },
                     rows: [
@@ -184,23 +296,33 @@ async function generateTMReport(data) {
                             children: [
                                 new TableCell({ 
                                     width: { size: 60, type: WidthType.PERCENTAGE },
-                                    children: [new Paragraph({ text: "DESCRIPTION", bold: true })] 
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "DESCRIPTION", bold: true, size: 20 })]
+                                    })] 
                                 }),
                                 new TableCell({ 
                                     width: { size: 10, type: WidthType.PERCENTAGE },
-                                    children: [new Paragraph({ text: "DATE", bold: true })] 
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "QTY", bold: true, size: 20 })]
+                                    })] 
                                 }),
                                 new TableCell({ 
                                     width: { size: 10, type: WidthType.PERCENTAGE },
-                                    children: [new Paragraph({ text: "HOURS", bold: true })] 
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "UNIT PRICE", bold: true, size: 20 })]
+                                    })] 
                                 }),
                                 new TableCell({ 
                                     width: { size: 10, type: WidthType.PERCENTAGE },
-                                    children: [new Paragraph({ text: "MATERIAL COST", bold: true })] 
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "TAX", bold: true, size: 20 })]
+                                    })] 
                                 }),
                                 new TableCell({ 
                                     width: { size: 10, type: WidthType.PERCENTAGE },
-                                    children: [new Paragraph({ text: "TOTAL", bold: true })] 
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "TOTAL", bold: true, size: 20 })]
+                                    })] 
                                 })
                             ]
                         }),
@@ -208,47 +330,39 @@ async function generateTMReport(data) {
                             children: [
                                 new TableCell({ 
                                     width: { size: 60, type: WidthType.PERCENTAGE },
-                                    children: [
-                                        new Paragraph({ text: `Crew: ${data.numMen} men x ${data.totalHours} hours` }),
-                                        new Paragraph({ text: "" }),
-                                        new Paragraph({ text: data.workDescription }),
-                                        ...(data.equipment && data.equipment.length > 0 ? [
-                                            new Paragraph({ text: "" }),
-                                            new Paragraph({ text: "EQUIPMENT:", bold: true }),
-                                            ...data.equipment.map(eq => 
-                                                new Paragraph({ text: `  • ${eq.type}: ${eq.hours} hours` })
-                                            )
-                                        ] : []),
-                                        ...(data.materials && data.materials.length > 0 ? [
-                                            new Paragraph({ text: "" }),
-                                            new Paragraph({ text: "MATERIALS NEEDED:", bold: true }),
-                                            ...data.materials.map(mat => 
-                                                new Paragraph({ text: `  • ${mat.qty} ${mat.desc}${mat.supplier ? ' (' + mat.supplier + ')' : ''}` })
-                                            )
-                                        ] : []),
-                                        new Paragraph({ text: "" }),
-                                        new Paragraph({ text: `Foreman: ${data.foremanName}` })
-                                    ]
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "Labor", bold: true, size: 20 })]
+                                    })] 
                                 }),
-                                new TableCell({ 
-                                    width: { size: 10, type: WidthType.PERCENTAGE },
-                                    children: [new Paragraph({ text: data.date })] 
-                                }),
-                                new TableCell({ 
-                                    width: { size: 10, type: WidthType.PERCENTAGE },
-                                    children: [new Paragraph({ text: "" })] 
-                                }),
-                                new TableCell({ 
-                                    width: { size: 10, type: WidthType.PERCENTAGE },
-                                    children: [new Paragraph({ text: "" })] 
-                                }),
-                                new TableCell({ 
-                                    width: { size: 10, type: WidthType.PERCENTAGE },
-                                    children: [new Paragraph({ text: "" })] 
-                                })
+                                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
+                                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
+                                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
+                                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] })
                             ]
                         }),
-                        // Empty rows for additional entries with balanced widths
+                        // Materials
+                        ...(data.materials && data.materials.length > 0 ? 
+                            data.materials.map(material => new TableRow({
+                                children: [
+                                    new TableCell({ 
+                                        width: { size: 60, type: WidthType.PERCENTAGE },
+                                        children: [new Paragraph({ 
+                                            children: [new TextRun({ text: `${material.desc}${material.supplier ? ` (${material.supplier})` : ''}`, size: 20 })]
+                                        })] 
+                                    }),
+                                    new TableCell({ 
+                                        width: { size: 10, type: WidthType.PERCENTAGE },
+                                        children: [new Paragraph({ 
+                                            children: [new TextRun({ text: material.qty || '', size: 20 })]
+                                        })] 
+                                    }),
+                                    new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
+                                    new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
+                                    new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] })
+                                ]
+                            }))
+                        : []),
+                        // Empty rows for additional entries
                         ...Array(6).fill(null).map(() => new TableRow({
                             children: [
                                 new TableCell({ width: { size: 60, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
@@ -258,9 +372,51 @@ async function generateTMReport(data) {
                                 new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] })
                             ]
                         })),
+                        // Equipment section
                         new TableRow({
                             children: [
-                                new TableCell({ width: { size: 60, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "Equipment", bold: true })] }),
+                                new TableCell({ 
+                                    width: { size: 60, type: WidthType.PERCENTAGE },
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "Equipment", bold: true, size: 20 })]
+                                    })] 
+                                }),
+                                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
+                                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
+                                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
+                                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] })
+                            ]
+                        }),
+                        ...(data.equipment && data.equipment.length > 0 ?
+                            data.equipment.map(equip => new TableRow({
+                                children: [
+                                    new TableCell({ 
+                                        width: { size: 60, type: WidthType.PERCENTAGE },
+                                        children: [new Paragraph({ 
+                                            children: [new TextRun({ text: equip.type || '', size: 20 })]
+                                        })] 
+                                    }),
+                                    new TableCell({ 
+                                        width: { size: 10, type: WidthType.PERCENTAGE },
+                                        children: [new Paragraph({ 
+                                            children: [new TextRun({ text: `${equip.hours} hrs` || '', size: 20 })]
+                                        })] 
+                                    }),
+                                    new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
+                                    new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
+                                    new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] })
+                                ]
+                            }))
+                        : []),
+                        // Totals
+                        new TableRow({
+                            children: [
+                                new TableCell({ 
+                                    width: { size: 60, type: WidthType.PERCENTAGE },
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "SUBTOTAL", bold: true, size: 20 })]
+                                    })] 
+                                }),
                                 new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
                                 new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
                                 new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
@@ -269,7 +425,12 @@ async function generateTMReport(data) {
                         }),
                         new TableRow({
                             children: [
-                                new TableCell({ width: { size: 60, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "SUBTOTAL", bold: true })] }),
+                                new TableCell({ 
+                                    width: { size: 60, type: WidthType.PERCENTAGE },
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "Profit and Overhead 15%", bold: true, size: 20 })]
+                                    })] 
+                                }),
                                 new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
                                 new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
                                 new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
@@ -278,16 +439,12 @@ async function generateTMReport(data) {
                         }),
                         new TableRow({
                             children: [
-                                new TableCell({ width: { size: 60, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "Profit and Overhead 15%", bold: true })] }),
-                                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
-                                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
-                                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
-                                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] })
-                            ]
-                        }),
-                        new TableRow({
-                            children: [
-                                new TableCell({ width: { size: 60, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "TOTAL", bold: true })] }),
+                                new TableCell({ 
+                                    width: { size: 60, type: WidthType.PERCENTAGE },
+                                    children: [new Paragraph({ 
+                                        children: [new TextRun({ text: "TOTAL", bold: true, size: 20 })]
+                                    })] 
+                                }),
                                 new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
                                 new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
                                 new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: "" })] }),
@@ -301,13 +458,13 @@ async function generateTMReport(data) {
                 new Paragraph({ text: "" }),
                 new Paragraph({
                     children: [
-                        new TextRun({ text: "APPROVED BY: ________________________________________________              DATE: ________________" })
+                        new TextRun({ text: "APPROVED BY: ________________________________________________              DATE: ________________", size: 20 })
                     ]
                 }),
                 new Paragraph({
                     alignment: AlignmentType.CENTER,
                     children: [
-                        new TextRun({ text: "Superintendent", italics: true })
+                        new TextRun({ text: "Superintendent", italics: true, size: 20 })
                     ]
                 })
             ]
@@ -333,7 +490,7 @@ app.post('/api/submit-tm-report', async (req, res) => {
         const fileName = `TM_Report_${jobNumber}_${formData.date}.docx`;
         
         const mailOptions = {
-            to: ['jordan.calbuilders@gmail.com', 'kathie.calbuilders@gmail.com'],
+            to: [process.env.EMAIL_TO_KATHIE, process.env.EMAIL_TO_JORDAN],
             subject: `T&M Report - Job ${jobNumber} - ${projectName} - ${formData.date}`,
             html: `
                 <h2>New T&M Report Submitted</h2>
@@ -369,14 +526,14 @@ app.post('/api/submit-tm-report', async (req, res) => {
             });
         }
         
-   // Send email via Resend
-await resend.emails.send({
-    from: 'T&M Reports <onboarding@resend.dev>',
-    to: [process.env.EMAIL_TO_KATHIE, process.env.EMAIL_TO_JORDAN],
-    subject: mailOptions.subject,
-    html: mailOptions.html,
-    attachments: mailOptions.attachments
-});
+        // Send email via Resend
+        await resend.emails.send({
+            from: 'T&M Reports <onboarding@resend.dev>',
+            to: [process.env.EMAIL_TO_KATHIE, process.env.EMAIL_TO_JORDAN],
+            subject: mailOptions.subject,
+            html: mailOptions.html,
+            attachments: mailOptions.attachments
+        });
         
         console.log('T&M report emailed successfully');
         res.json({ success: true, message: 'T&M report submitted successfully' });
