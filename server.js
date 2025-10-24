@@ -23,12 +23,15 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Generate T&M Report PDF Document
+// Gold/brown color from template
+const GOLD_COLOR = '#A27339';
+
+// Generate T&M Report PDF matching the template exactly
 async function generateTMReportPDF(data) {
     return new Promise((resolve, reject) => {
         const doc = new PDFDocument({ 
             size: 'LETTER',
-            margins: { top: 50, bottom: 50, left: 50, right: 50 }
+            margins: { top: 60, bottom: 60, left: 60, right: 60 }
         });
         
         const chunks = [];
@@ -36,165 +39,248 @@ async function generateTMReportPDF(data) {
         doc.on('end', () => resolve(Buffer.concat(chunks)));
         doc.on('error', reject);
 
-        // Logo
+        const leftMargin = 60;
+        const pageWidth = 612 - 120; // Letter width minus margins
+        let y = 60;
+
+        // Logo on the left
         try {
             const logoPath = path.join(__dirname, 'CBlogo_transparent_backgrd_1000x1000px.png');
             if (fs.existsSync(logoPath)) {
-                doc.image(logoPath, 256, 50, { width: 100 });
-                doc.moveDown(4);
+                doc.image(logoPath, leftMargin, y, { width: 80 });
             }
         } catch (error) {
-            console.log('Logo not found, continuing without it');
-            doc.moveDown(2);
+            console.log('Logo not found');
         }
 
-        // Header
-        doc.fontSize(14).font('Helvetica-Bold').text('A & J CALIFORNIA BUILDERS, INC.', { align: 'center' });
-        doc.fontSize(10).font('Helvetica').text('1261 Lincoln Avenue, Suite 106', { align: 'center' });
-        doc.text('San José, CA 95125', { align: 'center' });
-        doc.text('Office 408.988.8739', { align: 'center' });
-        doc.text("California State Contractor's License # 949668", { align: 'center' });
-        doc.moveDown();
+        // Company info on the right side
+        doc.fontSize(12).font('Helvetica-Bold')
+           .fillColor(GOLD_COLOR)
+           .text('A & J CALIFORNIA BUILDERS, INC.', leftMargin + 100, y);
+        
+        doc.fontSize(9).font('Helvetica').fillColor('#000000')
+           .text('1261 Lincoln Avenue, Suite 106', leftMargin + 100, y + 15)
+           .text('San José, CA 95125', leftMargin + 100, y + 28)
+           .text('Office 408.988.8739', leftMargin + 100, y + 41, { oblique: true })
+           .text("California State Contractor's License # 949668", leftMargin + 100, y + 54, { oblique: true });
+
+        y += 95;
+
+        // Horizontal line
+        doc.moveTo(leftMargin, y).lineTo(leftMargin + pageWidth, y).stroke();
+        y += 20;
 
         // Title
-        doc.fontSize(18).font('Helvetica-Bold')
-           .fillColor('#A27339')
-           .text('T I M E   &   M A T E R I A L   R E P O R T', { align: 'center' });
-        doc.fillColor('#000000');
-        doc.moveDown(1.5);
+        doc.fontSize(14).font('Helvetica-Bold').fillColor('#000000')
+           .text('T I M E  &  M A T E R I A L  R E P O R T', leftMargin, y, { 
+               width: pageWidth, 
+               align: 'center' 
+           });
+        y += 30;
 
-        // Project Info Table
-        const leftCol = 50;
-        const rightCol = 300;
-        let y = doc.y;
+        // Horizontal line
+        doc.moveTo(leftMargin, y).lineTo(leftMargin + pageWidth, y).stroke();
+        y += 20;
 
-        doc.fontSize(10).font('Helvetica-Bold');
-        
+        // Project Info Section - Two columns
+        const col1 = leftMargin;
+        const col2 = leftMargin + 250;
+
         // PROJECT NAME and PROJECT #
-        doc.text('PROJECT NAME:', leftCol, y);
-        doc.font('Helvetica').text(data.jobNumber.split(' - ')[1] || '', leftCol + 120, y);
-        doc.font('Helvetica-Bold').text('PROJECT #:', rightCol, y);
-        doc.font('Helvetica').text(data.jobNumber.split(' - ')[0] || '', rightCol + 80, y);
+        doc.fontSize(9).font('Helvetica-Bold').fillColor(GOLD_COLOR);
+        doc.text('PROJECT NAME', col1, y);
+        doc.fillColor('#000000').font('Helvetica');
+        doc.text(data.jobNumber.split(' - ')[1] || '', col1 + 100, y);
+        
+        doc.fillColor(GOLD_COLOR).font('Helvetica-Bold');
+        doc.text('PROJECT #', col2, y);
+        doc.fillColor('#000000').font('Helvetica');
+        doc.text(data.jobNumber.split(' - ')[0] || '', col2 + 70, y);
         y += 20;
 
         // DATE
-        doc.font('Helvetica-Bold').text('DATE:', leftCol, y);
-        doc.font('Helvetica').text(data.date, leftCol + 120, y);
+        doc.fillColor(GOLD_COLOR).font('Helvetica-Bold');
+        doc.text('DATE', col1, y);
+        doc.fillColor('#000000').font('Helvetica');
+        doc.text(data.date, col1 + 100, y);
         y += 20;
 
         // LOCATION
-        doc.font('Helvetica-Bold').text('LOCATION:', leftCol, y);
-        doc.font('Helvetica').text(data.projectAddress, leftCol + 120, y, { width: 400 });
+        doc.fillColor(GOLD_COLOR).font('Helvetica-Bold');
+        doc.text('LOCATION', col1, y);
+        doc.fillColor('#000000').font('Helvetica');
+        doc.text(data.projectAddress, col1 + 100, y, { width: 380 });
         y += 25;
 
-        // GEN. CONTRACTOR
-        doc.font('Helvetica-Bold').text('GEN. CONTRACTOR:', leftCol, y);
-        doc.font('Helvetica').text(data.generalContractor, leftCol + 120, y, { width: 400 });
-        y += 20;
+        // GEN. CONTRACTOR / OWNER
+        doc.fillColor(GOLD_COLOR).font('Helvetica-Bold');
+        doc.text('GEN. CONTRACTOR /', col1, y);
+        doc.text('OWNER', col1, y + 10);
+        doc.fillColor('#000000').font('Helvetica');
+        doc.text(data.generalContractor, col1 + 100, y);
+        y += 30;
 
-        // GC ADDRESS
-        doc.font('Helvetica-Bold').text('GC ADDRESS:', leftCol, y);
-        doc.font('Helvetica').text(data.gcAddress || '', leftCol + 120, y, { width: 400 });
+        // ADDRESS
+        doc.fillColor(GOLD_COLOR).font('Helvetica-Bold');
+        doc.text('ADDRESS', col1, y);
+        doc.fillColor('#000000').font('Helvetica');
+        doc.text(data.gcAddress || '', col1 + 100, y, { width: 380 });
+        y += 25;
+
+        // FOREMAN
+        doc.fillColor(GOLD_COLOR).font('Helvetica-Bold');
+        doc.text('FOREMAN', col1, y);
+        doc.fillColor('#000000').font('Helvetica');
+        doc.text(data.foremanName, col1 + 100, y);
         y += 25;
 
         // CREW SIZE and TOTAL HOURS
-        doc.font('Helvetica-Bold').text('CREW SIZE:', leftCol, y);
-        doc.font('Helvetica').text(`${data.numMen} men`, leftCol + 120, y);
-        doc.font('Helvetica-Bold').text('TOTAL HOURS:', rightCol, y);
-        doc.font('Helvetica').text(`${data.totalHours} hrs`, rightCol + 80, y);
-        y += 20;
+        doc.fillColor(GOLD_COLOR).font('Helvetica-Bold');
+        doc.text('CREW SIZE', col1, y);
+        doc.fillColor('#000000').font('Helvetica');
+        doc.text(`${data.numMen} men`, col1 + 100, y);
+        
+        doc.fillColor(GOLD_COLOR).font('Helvetica-Bold');
+        doc.text('TOTAL HOURS', col2, y);
+        doc.fillColor('#000000').font('Helvetica');
+        doc.text(`${data.totalHours} hrs`, col2 + 90, y);
+        y += 35;
 
-        // FOREMAN
-        doc.font('Helvetica-Bold').text('FOREMAN:', leftCol, y);
-        doc.font('Helvetica').text(data.foremanName, leftCol + 120, y);
-        y += 30;
-
-        // WORK DESCRIPTION
-        doc.font('Helvetica-Bold').fontSize(12).text('WORK DESCRIPTION', leftCol, y);
+        // WORK DESCRIPTION (added before table)
+        doc.fillColor(GOLD_COLOR).font('Helvetica-Bold').fontSize(10);
+        doc.text('WORK DESCRIPTION:', col1, y);
         y += 15;
-        doc.font('Helvetica').fontSize(10).text(data.workDescription || '', leftCol, y, { 
-            width: 512,
-            align: 'left'
-        });
+        doc.fillColor('#000000').font('Helvetica').fontSize(9);
+        doc.text(data.workDescription || '', col1, y, { width: pageWidth });
         y = doc.y + 20;
 
-        // Labor/Materials/Equipment Table
-        doc.font('Helvetica-Bold').fontSize(10);
-        
-        // Table header
+        // Table - matching template columns
         const tableTop = y;
-        const descCol = leftCol;
-        const qtyCol = leftCol + 310;
-        const unitCol = leftCol + 360;
-        const taxCol = leftCol + 420;
-        const totalCol = leftCol + 475;
+        const descWidth = 210; // Wide description column
+        const dateWidth = 70;
+        const hoursWidth = 60;
+        const costWidth = 90;
+        const totalWidth = 62;
 
-        // Draw table header
-        doc.rect(leftCol, tableTop, 512, 20).stroke();
-        doc.text('DESCRIPTION', descCol + 5, tableTop + 5);
-        doc.text('QTY', qtyCol + 5, tableTop + 5);
-        doc.text('UNIT', unitCol + 5, tableTop + 5);
-        doc.text('TAX', taxCol + 5, tableTop + 5);
-        doc.text('TOTAL', totalCol + 5, tableTop + 5);
+        const descX = leftMargin;
+        const dateX = descX + descWidth;
+        const hoursX = dateX + dateWidth;
+        const costX = hoursX + hoursWidth;
+        const totalX = costX + costWidth;
+
+        // Table header
+        doc.fillColor(GOLD_COLOR).font('Helvetica-Bold').fontSize(9);
+        doc.text('DESCRIPTION', descX + 3, tableTop + 5);
+        doc.text('DATE', dateX + 3, tableTop + 5);
+        doc.text('HOURS', hoursX + 3, tableTop + 5);
+        doc.text('MATERIAL COST', costX + 3, tableTop + 5);
+        doc.text('TOTAL', totalX + 3, tableTop + 5);
+
+        // Draw header border
+        doc.rect(descX, tableTop, descWidth, 20).stroke();
+        doc.rect(dateX, tableTop, dateWidth, 20).stroke();
+        doc.rect(hoursX, tableTop, hoursWidth, 20).stroke();
+        doc.rect(costX, tableTop, costWidth, 20).stroke();
+        doc.rect(totalX, tableTop, totalWidth, 20).stroke();
 
         y = tableTop + 20;
 
-        // Labor row
-        doc.rect(leftCol, y, 512, 18).stroke();
-        doc.font('Helvetica-Bold').text('Labor', descCol + 5, y + 4);
+        // Add data rows
+        doc.fillColor('#000000').font('Helvetica').fontSize(9);
+        
+        // First row with date
+        doc.rect(descX, y, descWidth, 18).stroke();
+        doc.rect(dateX, y, dateWidth, 18).stroke();
+        doc.text(data.date, dateX + 3, y + 4);
+        doc.rect(hoursX, y, hoursWidth, 18).stroke();
+        doc.rect(costX, y, costWidth, 18).stroke();
+        doc.rect(totalX, y, totalWidth, 18).stroke();
         y += 18;
 
-        // Materials
+        // Materials rows
         if (data.materials && data.materials.length > 0) {
             data.materials.forEach(material => {
-                doc.rect(leftCol, y, 512, 18).stroke();
-                doc.font('Helvetica').text(
-                    `${material.desc}${material.supplier ? ` (${material.supplier})` : ''}`,
-                    descCol + 5, y + 4, { width: 300 }
-                );
-                doc.text(material.qty || '', qtyCol + 5, y + 4);
+                doc.rect(descX, y, descWidth, 18).stroke();
+                doc.text(`${material.desc}${material.supplier ? ` (${material.supplier})` : ''}`, descX + 3, y + 4, { width: descWidth - 6 });
+                doc.rect(dateX, y, dateWidth, 18).stroke();
+                doc.rect(hoursX, y, hoursWidth, 18).stroke();
+                doc.rect(costX, y, costWidth, 18).stroke();
+                doc.rect(totalX, y, totalWidth, 18).stroke();
                 y += 18;
             });
         }
 
-        // Empty rows
-        for (let i = 0; i < 6; i++) {
-            doc.rect(leftCol, y, 512, 18).stroke();
+        // Empty rows (7 total to fill page nicely)
+        for (let i = 0; i < 7; i++) {
+            doc.rect(descX, y, descWidth, 18).stroke();
+            doc.rect(dateX, y, dateWidth, 18).stroke();
+            doc.rect(hoursX, y, hoursWidth, 18).stroke();
+            doc.rect(costX, y, costWidth, 18).stroke();
+            doc.rect(totalX, y, totalWidth, 18).stroke();
             y += 18;
         }
 
-        // Equipment section
-        doc.rect(leftCol, y, 512, 18).stroke();
-        doc.font('Helvetica-Bold').text('Equipment', descCol + 5, y + 4);
+        // Equipment row
+        doc.fillColor(GOLD_COLOR).font('Helvetica-Bold');
+        doc.rect(descX, y, descWidth, 18).stroke();
+        doc.text('Equipment', descX + 3, y + 4);
+        doc.rect(dateX, y, dateWidth, 18).stroke();
+        doc.rect(hoursX, y, hoursWidth, 18).stroke();
+        doc.rect(costX, y, costWidth, 18).stroke();
+        doc.rect(totalX, y, totalWidth, 18).stroke();
         y += 18;
 
+        // Equipment items
+        doc.fillColor('#000000').font('Helvetica');
         if (data.equipment && data.equipment.length > 0) {
             data.equipment.forEach(equip => {
-                doc.rect(leftCol, y, 512, 18).stroke();
-                doc.font('Helvetica').text(equip.type || '', descCol + 5, y + 4);
-                doc.text(`${equip.hours} hrs`, qtyCol + 5, y + 4);
+                doc.rect(descX, y, descWidth, 18).stroke();
+                doc.text(equip.type || '', descX + 3, y + 4);
+                doc.rect(dateX, y, dateWidth, 18).stroke();
+                doc.rect(hoursX, y, hoursWidth, 18).stroke();
+                doc.text(`${equip.hours}`, hoursX + 3, y + 4);
+                doc.rect(costX, y, costWidth, 18).stroke();
+                doc.rect(totalX, y, totalWidth, 18).stroke();
                 y += 18;
             });
         }
 
-        // Totals
-        doc.rect(leftCol, y, 512, 18).stroke();
-        doc.font('Helvetica-Bold').text('SUBTOTAL', descCol + 5, y + 4);
+        // Totals section
+        doc.fillColor(GOLD_COLOR).font('Helvetica-Bold');
+        
+        // SUBTOTAL
+        doc.rect(descX, y, descWidth, 18).stroke();
+        doc.text('SUBTOTAL', descX + 3, y + 4);
+        doc.rect(dateX, y, dateWidth, 18).stroke();
+        doc.rect(hoursX, y, hoursWidth, 18).stroke();
+        doc.rect(costX, y, costWidth, 18).stroke();
+        doc.rect(totalX, y, totalWidth, 18).stroke();
         y += 18;
 
-        doc.rect(leftCol, y, 512, 18).stroke();
-        doc.font('Helvetica-Bold').text('Profit and Overhead 15%', descCol + 5, y + 4);
+        // Profit and Overhead 15%
+        doc.rect(descX, y, descWidth, 18).stroke();
+        doc.text('Profit and Overhead 15%', descX + 3, y + 4);
+        doc.rect(dateX, y, dateWidth, 18).stroke();
+        doc.rect(hoursX, y, hoursWidth, 18).stroke();
+        doc.rect(costX, y, costWidth, 18).stroke();
+        doc.rect(totalX, y, totalWidth, 18).stroke();
         y += 18;
 
-        doc.rect(leftCol, y, 512, 18).stroke();
-        doc.font('Helvetica-Bold').text('TOTAL', descCol + 5, y + 4);
+        // TOTAL
+        doc.rect(descX, y, descWidth, 18).stroke();
+        doc.text('TOTAL', descX + 3, y + 4);
+        doc.rect(dateX, y, dateWidth, 18).stroke();
+        doc.rect(hoursX, y, hoursWidth, 18).stroke();
+        doc.rect(costX, y, costWidth, 18).stroke();
+        doc.rect(totalX, y, totalWidth, 18).stroke();
         y += 30;
 
-        // Approval line
-        doc.font('Helvetica').fontSize(10);
-        doc.text('APPROVED BY: ________________________________              DATE: ______________', leftCol, y);
-        y += 15;
-        doc.fontSize(9).font('Helvetica-Oblique').text('Superintendent', { align: 'center' });
+        // Approval section
+        doc.fillColor('#000000').font('Helvetica').fontSize(9);
+        doc.text('APPROVED BY: _______________________________________________', leftMargin, y);
+        doc.text('DATE: _______________', leftMargin + 380, y);
+        y += 20;
+        doc.font('Helvetica-Oblique').text('Superintendent', leftMargin, y, { align: 'center' });
 
         doc.end();
     });
