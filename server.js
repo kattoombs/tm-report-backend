@@ -333,7 +333,6 @@ app.post('/api/submit-tm-report', async (req, res) => {
         const fileName = `TM_Report_${jobNumber}_${formData.date}.docx`;
         
         const mailOptions = {
-            from: process.env.EMAIL_USER,
             to: ['jordan.calbuilders@gmail.com', 'kathie.calbuilders@gmail.com'],
             subject: `T&M Report - Job ${jobNumber} - ${projectName} - ${formData.date}`,
             html: `
