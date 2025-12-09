@@ -334,10 +334,10 @@ app.post('/api/submit-tm-report', async (req, res) => {
             });
         }
         
-        // Send email via Resend
+        // Send email via Resend (Testing mode: only sends to account owner)
         await resend.emails.send({
             from: 'T&M Reports <onboarding@resend.dev>',
-            to: [process.env.EMAIL_TO_KATHIE, process.env.EMAIL_TO_JORDAN],
+            to: process.env.EMAIL_TO_KATHIE,
             subject: mailOptions.subject,
             html: mailOptions.html,
             attachments: mailOptions.attachments
